@@ -8,35 +8,39 @@
 
 (def thingy (atom nil))
 
+(def get-current-time (fn [] (System/currentTimeMillis)))
+
 (defn json-response [obj]
   (json/write-str obj))
-
-(defn about-page
-  [request]
-  (ring-resp/response (format "Clojure %s" (clojure-version))))
 
 (defn home-page
   [request]
   (ring-resp/response "Hello World!"))
 
 (defn timer-page [request]
-  {:status 500})
+  (if @thingy
+    {:status 200 :body {:seconds (- (get-current-time)
+                                    @thingy)}}
+    {:status 500}))
 
 (defn start-timer-page [request]
-  (if (= nil @thingy)
-    (do (reset! thingy 0) {:status 201  :body {:seconds 0}})
+  (if-not @thingy
+    (do (reset! thingy (get-current-time)) {:status 201  :body {:seconds 0}})
     {:status 500}))
+
+(defn stop-timer [request]
+  [request]
+  (if @thingy
+    (do (reset! thingy nil) {:status 200})
+    {:status 500}))
+
+
 
 (defroutes routes
   [[["/" {:get home-page}
-     ;; Set default interceptors for /about and any other paths under /
-     ^:interceptors [(body-params/body-params) bootstrap/html-body]
-     ["/about" {:get about-page}]
      ^:interceptors [(body-params/body-params) bootstrap/json-body]
-     ["/timer" {:get timer-page, :post start-timer-page}]
+     ["/timer" {:get timer-page, :post start-timer-page, :delete stop-timer}]
      ]]])
-
-
 
 ;; You can use this fn or a per-request fn via io.pedestal.service.http.route/url-for
 (def url-for (route/url-for-routes routes))
@@ -50,6 +54,7 @@
               ;; :bootstrap/interceptors []
               ::bootstrap/routes routes
 
+              :a :b
 
               ;; Uncomment next line to enable CORS support, add
               ;; string(s) specifying scheme, host and port for
